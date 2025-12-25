@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ultimate GPT Simulator GitHub Ready</title>
+<title>Ultimate GPT Simulator</title>
 <style>
 body { font-family: Arial; background:#f1f1f1; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;}
 #chat-container {background:white; width:400px; max-height:600px; border-radius:10px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 15px rgba(0,0,0,0.2);}
@@ -25,17 +25,18 @@ body { font-family: Arial; background:#f1f1f1; display:flex; justify-content:cen
 </div>
 
 <script>
-// رابط Raw JSON على GitHub (جاهز للعمل مباشرة)
-const jsonURL = "https://raw.githubusercontent.com/BibouAbdesselam/UltimateGPT/main/responses.json";
-
+// تحميل JSON محلي من نفس المستودع
 let responseData = {};
-let conversationHistory = [];
+fetch('responses.json')
+    .then(res => res.json())
+    .then(data => { responseData = data; console.log("JSON loaded:", responseData); })
+    .catch(err => console.error("فشل تحميل JSON:", err));
 
 const chatBox = document.getElementById('chat-box');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
-function appendMessage(sender, message){
+function appendMessage(sender,message){
     const msgDiv = document.createElement('div');
     msgDiv.className = sender==='user'?'user-msg':'bot-msg';
     msgDiv.textContent = message;
@@ -45,22 +46,15 @@ function appendMessage(sender, message){
 
 function getWords(text){ return text.toLowerCase().replace(/[^\w\s]/gi,'').split(/\s+/); }
 
-function detectSentiment(userMsg){
-    const lower = userMsg.toLowerCase();
-    if(responseData.feelings?.positive?.some(w=>lower.includes(w))) return "positive";
-    if(responseData.feelings?.negative?.some(w=>lower.includes(w))) return "negative";
-    return "neutral";
-}
-
 function generateResponse(userMsg){
     if(Object.keys(responseData).length === 0) return "جارٍ تحميل البيانات...";
     const words = getWords(userMsg);
     let response = "";
 
     for(const category in responseData){
-        if(category === "feelings" || category === "projects") continue;
+        if(category==="feelings" || category==="projects") continue;
         const data = responseData[category];
-        if(data.keywords?.some(k => words.includes(k.toLowerCase()))){
+        if(data.keywords.some(k => words.includes(k.toLowerCase()))){
             response = data.responses[Math.floor(Math.random()*data.responses.length)] || "";
             if(data.followups && data.followups.length && Math.random()<0.7){
                 const follow = data.followups[Math.floor(Math.random()*data.followups.length)];
@@ -72,20 +66,13 @@ function generateResponse(userMsg){
 
     if(!response) response = "عذراً، لم أفهم سؤالك. 🤔";
 
-    if(responseData.projects && responseData.projects.length && Math.random()<0.5){
+    if(responseData.projects.length && Math.random()<0.5){
         const project = responseData.projects[Math.floor(Math.random()*responseData.projects.length)];
         response += " " + project;
     }
 
-    conversationHistory.push({user:userMsg, bot:response});
     return response;
 }
-
-// تحميل JSON من GitHub تلقائيًا
-fetch(jsonURL)
-    .then(res => res.json())
-    .then(data => { responseData = data; console.log("JSON loaded from GitHub:", responseData); })
-    .catch(err => console.error("فشل تحميل JSON من GitHub:", err));
 
 sendBtn.addEventListener('click', ()=>{
     const userMsg = userInput.value.trim();
