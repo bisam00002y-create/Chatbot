@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate GPT Simulator JSON</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f1f1f1; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;}
+#chat-container {background:white; width:400px; max-height:600px; border-radius:10px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 15px rgba(0,0,0,0.2);}
+#chat-box {flex:1; padding:10px; overflow-y:auto;}
+.user-msg {text-align:right; margin:5px 0; color:white; background:#007bff; display:inline-block; padding:5px 10px; border-radius:15px;}
+.bot-msg {text-align:left; margin:5px 0; background:#e4e4e4; display:inline-block; padding:5px 10px; border-radius:15px;}
+#input-container {display:flex; border-top:1px solid #ccc;}
+#user-input {flex:1; padding:10px; border:none; outline:none;}
+#send-btn {padding:10px 15px; border:none; background:#007bff; color:white; cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="chat-container">
+  <div id="chat-box"></div>
+  <div id="input-container">
+    <input type="text" id="user-input" placeholder="اكتب رسالتك هنا...">
+    <button id="send-btn">إرسال</button>
+  </div>
+</div>
+
+<script>
+let conversationHistory = JSON.parse(localStorage.getItem('conversationHistory')) || [];
+let responseData = {};
+
+const chatBox = document.getElementById('chat-box');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+
+function appendMessage(sender,message){
+  const msgDiv=document.createElement('div');
+  msgDiv.className = sender==='user'?'user-msg':'bot-msg';
+  msgDiv.textContent = message;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// تحميل JSON
+fetch('responses.json')
+  .then(res => res.json())
+  .then(data => { responseData = data; })
+  .catch(err => console.error("Failed to load JSON", err));
+
+function getWords(text){return text.toLowerCase().replace(/[^\w\s]/gi,'').split(/\s+/);}
+
+function detectSentiment(userMsg){
+  const lower = userMsg.toLowerCase();
+  if(responseData.feelings.positive.some(w=>lower.includes(w))) return "positive";
+  if(responseData.feelings.negative.some(w=>lower.includes(w))) return "negative";
+  return "neutral";
+}
+
+function generateResponse(userMsg){
+  const words = getWords(userMsg);
+  let response = "";
+
+  for(const category in responseData){
+    if(category === "feelings" || category === "projects") continue;
+    const data = responseData[category];
+    if(data.keywords.some(k => words.includes(k.toLowerCase()))){
+      response = data.responses[Math.floor(Math.random()*data.responses.length)];
+      if(data.followups && Math.random()<0.7){
+        const follow = data.followups[Math.floor(Math.random()*data.followups.length)];
+        response += " " + follow;
+      }
+      break;
+    }
+  }
+
+  if(!response) response = "عذراً، لم أفهم سؤالك. 🤔";
+
+  // اقتراح مشاريع عشوائي
+  if(Math.random()<0.5){
+    const project = responseData.projects[Math.floor(Math.random()*responseData.projects.length)];
+    response += " " + project;
+  }
+
+  return response;
+}
+
+sendBtn.addEventListener('click', ()=>{
+  const userMsg = userInput.value.trim();
+  if(!userMsg) return;
+  const botMsg = generateResponse(userMsg);
+  conversationHistory.push({user:userMsg, bot:botMsg});
+  localStorage.setItem('conversationHistory', JSON.stringify(conversationHistory));
+  appendMessage('user', userMsg);
+  appendMessage('bot', botMsg);
+  userInput.value='';
+});
+
+userInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') sendBtn.click();});
+</script>
+</body>
+</html>
